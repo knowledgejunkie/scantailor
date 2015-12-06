@@ -30,6 +30,7 @@
 #include "DespeckleLevel.h"
 #include "Dpi.h"
 #include "ImageViewTab.h"
+#include "Params.h"
 #include <set>
 
 namespace dewarping
@@ -60,6 +61,7 @@ public:
 	ImageViewTab lastTab() const { return m_lastTab; }
 
 	DepthPerception const& depthPerception() const { return m_depthPerception; }
+	
 signals:
 	void despeckleLevelChanged(DespeckleLevel level, bool* handled);
 
@@ -68,6 +70,9 @@ public slots:
 	void tabChanged(ImageViewTab tab);
 
 	void distortionModelChanged(dewarping::DistortionModel const& model);
+	
+	void setThresholdRange();
+	
 private slots:
 	void changeDpiButtonClicked();
 	
@@ -79,9 +84,13 @@ private slots:
 
 	void colorModeChanged(int idx);
 	
+	void pictureShapeChanged(int idx);
+	
 	void whiteMarginsToggled(bool checked);
 	
 	void equalizeIlluminationToggled(bool checked);
+
+	void equalizeIlluminationMixedToggled(bool checked);
 	
 	void setLighterThreshold();
 	
@@ -123,11 +132,14 @@ private:
 
 	void updateDewarpingDisplay();
 	
+//	void setThresholdRange();
+	
 	IntrusivePtr<Settings> m_ptrSettings;
 	PageSelectionAccessor m_pageSelectionAccessor;
 	PageId m_pageId;
 	Dpi m_outputDpi;
 	ColorParams m_colorParams;
+	PictureShape m_pictureShape;
 	DepthPerception m_depthPerception;
 	DewarpingMode m_dewarpingMode;
 	DespeckleLevel m_despeckleLevel;

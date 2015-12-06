@@ -22,6 +22,7 @@
 #include "imageproc/Connectivity.h"
 #include "Dpi.h"
 #include "ColorParams.h"
+#include "Params.h"
 #include "DepthPerception.h"
 #include "DespeckleLevel.h"
 #include "DewarpingMode.h"
@@ -104,7 +105,7 @@ public:
 		DepthPerception const& depth_perception,
 		imageproc::BinaryImage* auto_picture_mask = 0,
 		imageproc::BinaryImage* speckles_image = 0,
-		DebugImages* dbg = 0) const;
+		DebugImages* dbg = 0, PictureShape picture_shape=FREE_SHAPE) const;
 	
 	QSize outputImageSize() const;
 	
@@ -121,7 +122,7 @@ private:
 		DepthPerception const& depth_perception,
 		imageproc::BinaryImage* auto_picture_mask = 0,
 		imageproc::BinaryImage* speckles_image = 0,
-		DebugImages* dbg = 0) const;
+		DebugImages* dbg = 0, PictureShape picture_shape=FREE_SHAPE) const;
 
 	QImage processAsIs(
 		FilterData const& input, TaskStatus const& status,
@@ -134,7 +135,7 @@ private:
 		ZoneSet const& picture_zones, ZoneSet const& fill_zones,
 		imageproc::BinaryImage* auto_picture_mask = 0,
 		imageproc::BinaryImage* speckles_image = 0,
-		DebugImages* dbg = 0) const;
+		DebugImages* dbg = 0, PictureShape picture_shape=FREE_SHAPE) const;
 
 	QImage processWithDewarping(
 		TaskStatus const& status, FilterData const& input,
@@ -144,7 +145,7 @@ private:
 		DepthPerception const& depth_perception,
 		imageproc::BinaryImage* auto_picture_mask = 0,
 		imageproc::BinaryImage* speckles_image = 0,
-		DebugImages* dbg = 0) const;
+		DebugImages* dbg = 0, PictureShape picture_shape=FREE_SHAPE) const;
 	
 	void setupTrivialDistortionModel(dewarping::DistortionModel& distortion_model) const;
 

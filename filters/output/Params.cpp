@@ -21,26 +21,32 @@
 #include "BlackWhiteOptions.h"
 #include "XmlMarshaller.h"
 #include "XmlUnmarshaller.h"
+#include "DespeckleLevel.h"
+#include "SettingsManager.h"
+
 #include <QDomDocument>
 #include <QDomElement>
 #include <QByteArray>
 #include <QString>
+#include <QSettings>
 
 namespace output
 {
 
 Params::Params()
 :	m_dpi(600, 600),
-	m_despeckleLevel(DESPECKLE_CAUTIOUS)
+	m_pictureShape(FREE_SHAPE)/*,
+	m_despeckleLevel(DESPECKLE_CAUTIOUS)*/
 {
+	SettingsManager sm;
+	m_despeckleLevel = despeckleLevelFromString(sm.GetDespeckling());
 }
 
 Params::Params(QDomElement const& el)
 :	m_dpi(XmlUnmarshaller::dpi(el.namedItem("dpi").toElement())),
 	m_distortionModel(el.namedItem("distortion-model").toElement()),
 	m_depthPerception(el.attribute("depthPerception")),
-	m_dewarpingMode(el.attribute("dewarpingMode")),
-	m_despeckleLevel(despeckleLevelFromString(el.attribute("despeckleLevel")))
+        m_dewarpingMode(el.attribute("dewarpingMode"))
 {
 	QDomElement const cp(el.namedItem("color-params").toElement());
 	m_colorParams.setColorMode(parseColorMode(cp.attribute("colorMode")));
@@ -52,6 +58,8 @@ Params::Params(QDomElement const& el)
 	m_colorParams.setBlackWhiteOptions(
 		BlackWhiteOptions(cp.namedItem("bw").toElement())
 	);
+        m_despeckleLevel = despeckleLevelFromString(el.attribute("despeckleLevel")),
+        m_pictureShape = (PictureShape)(el.attribute("pictureShape").toInt());
 }
 
 QDomElement
@@ -61,6 +69,7 @@ Params::toXml(QDomDocument& doc, QString const& name) const
 	
 	QDomElement el(doc.createElement(name));
 	el.appendChild(m_distortionModel.toXml(doc, "distortion-model"));
+	el.setAttribute("pictureShape", (int)m_pictureShape);
 	el.setAttribute("depthPerception", m_depthPerception.toString());
 	el.setAttribute("dewarpingMode", m_dewarpingMode.toString());
 	el.setAttribute("despeckleLevel", despeckleLevelToString(m_despeckleLevel));

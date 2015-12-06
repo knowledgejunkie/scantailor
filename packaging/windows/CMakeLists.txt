@@ -2,6 +2,7 @@ FIND_PROGRAM(
 	MAKENSIS_EXE makensis
 	PATHS "[HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\NSIS;InstallLocation]"
 )
+
 IF(NOT MAKENSIS_EXE)
 	MESSAGE(
 		FATAL_ERROR

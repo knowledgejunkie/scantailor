@@ -31,6 +31,8 @@
 #include "../../Utils.h"
 #include "ScopedIncDec.h"
 #include "config.h"
+#include "DespeckleLevel.h"
+#include "SettingsManager.h"
 #ifndef Q_MOC_RUN
 #include <boost/foreach.hpp>
 #endif
@@ -53,11 +55,14 @@ OptionsWidget::OptionsWidget(
 	PageSelectionAccessor const& page_selection_accessor)
 :	m_ptrSettings(settings),
 	m_pageSelectionAccessor(page_selection_accessor),
-	m_despeckleLevel(DESPECKLE_NORMAL),
+//	m_despeckleLevel(DESPECKLE_NORMAL),
 	m_lastTab(TAB_OUTPUT),
 	m_ignoreThresholdChanges(0)
 {
 	setupUi(this);
+	
+	SettingsManager sm;
+	m_despeckleLevel = despeckleLevelFromString(sm.GetDespeckling());
 
 	depthPerceptionSlider->setMinimum(qRound(DepthPerception::minValue() * 10));
 	depthPerceptionSlider->setMaximum(qRound(DepthPerception::maxValue() * 10));
@@ -65,6 +70,9 @@ OptionsWidget::OptionsWidget(
 	colorModeSelector->addItem(tr("Black and White"), ColorParams::BLACK_AND_WHITE);
 	colorModeSelector->addItem(tr("Color / Grayscale"), ColorParams::COLOR_GRAYSCALE);
 	colorModeSelector->addItem(tr("Mixed"), ColorParams::MIXED);
+	
+	pictureShapeSelector->addItem(tr("Free"), FREE_SHAPE);
+	pictureShapeSelector->addItem(tr("Rectangular"), RECTANGULAR_SHAPE);
 	
 	darkerThresholdLink->setText(
 		Utils::richTextForLink(darkerThresholdLink->text())
@@ -87,12 +95,20 @@ OptionsWidget::OptionsWidget(
 		this, SLOT(colorModeChanged(int))
 	);
 	connect(
+		pictureShapeSelector, SIGNAL(currentIndexChanged(int)),
+		this, SLOT(pictureShapeChanged(int))
+	);
+	connect(
 		whiteMarginsCB, SIGNAL(clicked(bool)),
 		this, SLOT(whiteMarginsToggled(bool))
 	);
 	connect(
 		equalizeIlluminationCB, SIGNAL(clicked(bool)),
 		this, SLOT(equalizeIlluminationToggled(bool))
+	);
+	connect(
+		equalizeIlluminationMMCB, SIGNAL(clicked(bool)),
+		this, SLOT(equalizeIlluminationMixedToggled(bool))
 	);
 	connect(
 		lighterThresholdLink, SIGNAL(linkActivated(QString const&)),
@@ -155,8 +171,7 @@ OptionsWidget::OptionsWidget(
 		this, SLOT(depthPerceptionChangedSlot(int))
 	);
 	
-	thresholdSlider->setMinimum(-50);
-	thresholdSlider->setMaximum(50);
+	setThresholdRange();
 	thresholLabel->setText(QString::number(thresholdSlider->value()));
 }
 
@@ -167,10 +182,13 @@ OptionsWidget::~OptionsWidget()
 void
 OptionsWidget::preUpdateUI(PageId const& page_id)
 {
+	setThresholdRange();
+
 	Params const params(m_ptrSettings->getParams(page_id));
 	m_pageId = page_id;
 	m_outputDpi = params.outputDpi();
 	m_colorParams = params.colorParams();
+	m_pictureShape = params.pictureShape();
 	m_dewarpingMode = params.dewarpingMode();
 	m_depthPerception = params.depthPerception();
 	m_despeckleLevel = params.despeckleLevel();
@@ -218,6 +236,14 @@ OptionsWidget::colorModeChanged(int const idx)
 }
 
 void
+OptionsWidget::pictureShapeChanged(int const idx)
+{
+	m_pictureShape = (PictureShape)(pictureShapeSelector->itemData(idx).toInt());
+	m_ptrSettings->setPictureShape(m_pageId, m_pictureShape);
+	emit reloadRequested();
+}
+
+void
 OptionsWidget::whiteMarginsToggled(bool const checked)
 {
 	ColorGrayscaleOptions opt(m_colorParams.colorGrayscaleOptions());
@@ -237,6 +263,16 @@ OptionsWidget::equalizeIlluminationToggled(bool const checked)
 {
 	ColorGrayscaleOptions opt(m_colorParams.colorGrayscaleOptions());
 	opt.setNormalizeIllumination(checked);
+	m_colorParams.setColorGrayscaleOptions(opt);
+	m_ptrSettings->setColorParams(m_pageId, m_colorParams);
+	emit reloadRequested();
+}
+
+void
+OptionsWidget::equalizeIlluminationMixedToggled(bool const checked)
+{
+	ColorGrayscaleOptions opt(m_colorParams.colorGrayscaleOptions());
+	opt.setNormalizeIllumination_mixed(checked);
 	m_colorParams.setColorGrayscaleOptions(opt);
 	m_ptrSettings->setColorParams(m_pageId, m_colorParams);
 	emit reloadRequested();
@@ -350,6 +386,7 @@ OptionsWidget::applyColorsConfirmed(std::set<PageId> const& pages)
 {
 	BOOST_FOREACH(PageId const& page_id, pages) {
 		m_ptrSettings->setColorParams(page_id, m_colorParams);
+		m_ptrSettings->setPictureShape(page_id, m_pictureShape);
 		emit invalidateThumbnail(page_id);
 	}
 	
@@ -600,7 +637,9 @@ OptionsWidget::updateColorsDisplay()
 	colorModeSelector->setCurrentIndex(color_mode_idx);
 	
 	bool color_grayscale_options_visible = false;
+	bool color_grayscale_Mixed_options_visible = false;
 	bool bw_options_visible = false;
+	bool picture_shape_visible = false;
 	switch (color_mode) {
 		case ColorParams::BLACK_AND_WHITE:
 			bw_options_visible = true;
@@ -609,24 +648,37 @@ OptionsWidget::updateColorsDisplay()
 			color_grayscale_options_visible = true;
 			break;
 		case ColorParams::MIXED:
+			color_grayscale_Mixed_options_visible = true;
 			bw_options_visible = true;
+			picture_shape_visible = true;
 			break;
 	}
 	
 	colorGrayscaleOptions->setVisible(color_grayscale_options_visible);
+	ColorGrayscaleOptions const opt(
+		m_colorParams.colorGrayscaleOptions()
+	);
 	if (color_grayscale_options_visible) {
-		ColorGrayscaleOptions const opt(
-			m_colorParams.colorGrayscaleOptions()
-		);
 		whiteMarginsCB->setChecked(opt.whiteMargins());
 		equalizeIlluminationCB->setChecked(opt.normalizeIllumination());
 		equalizeIlluminationCB->setEnabled(opt.whiteMargins());
 	}
 	
+	equalizeIlluminationMMCB->setVisible(color_grayscale_Mixed_options_visible);
+	if (color_grayscale_Mixed_options_visible) {
+		 equalizeIlluminationMMCB->setChecked(opt.normalizeIllumination_mixed());
+	}
+	
 	modePanel->setVisible(m_lastTab != TAB_DEWARPING);
+	pictureShapeOptions->setVisible(picture_shape_visible);
 	bwOptions->setVisible(bw_options_visible);
 	despecklePanel->setVisible(bw_options_visible && m_lastTab != TAB_DEWARPING);
 
+	if (picture_shape_visible) {
+		int const picture_shape_idx = pictureShapeSelector->findData(m_pictureShape);
+		pictureShapeSelector->setCurrentIndex(picture_shape_idx);
+	}
+	
 	if (bw_options_visible) {
 		switch (m_despeckleLevel) {
 			case DESPECKLE_OFF:
@@ -672,6 +724,15 @@ OptionsWidget::updateDewarpingDisplay()
 	depthPerceptionSlider->blockSignals(true);
 	depthPerceptionSlider->setValue(qRound(m_depthPerception.value() * 10));
 	depthPerceptionSlider->blockSignals(false);
+}
+
+void
+OptionsWidget::setThresholdRange()
+{
+	SettingsManager sm;
+	int tv = sm.GetThresholdLevelValue();
+	thresholdSlider->setMinimum(-tv);
+	thresholdSlider->setMaximum(tv);
 }
 
 } // namespace output

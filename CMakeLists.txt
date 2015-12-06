@@ -529,6 +529,7 @@ SET(
 	filter_dc/PageOrientationCollector.h
 	version.h
 	config.h.in
+	SettingsManager.h SettingsManager.cpp
 	${common_ui_files}
 )
 

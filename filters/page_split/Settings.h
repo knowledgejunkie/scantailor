@@ -128,6 +128,7 @@ public:
 		LayoutType m_layoutType;
 		Action m_paramsAction;
 		Action m_layoutTypeAction;
+		int m_splitLineCount;
 	};
 	
 	

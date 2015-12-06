@@ -78,6 +78,7 @@ private:
 	ImageViewTab m_lastTab;
 	bool m_batchProcessing;
 	bool m_debug;
+	bool m_bitonal_g4fax;
 };
 
 } // namespace output

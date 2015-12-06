@@ -25,7 +25,6 @@
 #include <QDomDocument>
 #include <QDomElement>
 #include <math.h>
-
 namespace output
 {
 
@@ -36,11 +35,13 @@ OutputImageParams::OutputImageParams(
 	DewarpingMode const& dewarping_mode,
 	dewarping::DistortionModel const& distortion_model,
 	DepthPerception const& depth_perception,
-	DespeckleLevel const despeckle_level)
+	DespeckleLevel const despeckle_level,
+	PictureShape const picture_shape)
 :	m_size(out_image_size),
 	m_contentRect(content_rect),
 	m_dpi(dpi),
 	m_colorParams(color_params),
+	m_pictureShape(picture_shape),
 	m_distortionModel(distortion_model),
 	m_depthPerception(depth_perception),
 	m_dewarpingMode(dewarping_mode),
@@ -57,7 +58,7 @@ OutputImageParams::OutputImageParams(QDomElement const& el)
 	m_partialXform(el.namedItem("partial-xform").toElement()),
 	m_dpi(XmlUnmarshaller::dpi(el.namedItem("dpi").toElement())),
 	m_colorParams(el.namedItem("color-params").toElement()),
-	m_distortionModel(el.namedItem("distortion-model").toElement()),
+        m_distortionModel(el.namedItem("distortion-model").toElement()),
 	m_depthPerception(el.attribute("depthPerception")),
 	m_dewarpingMode(el.attribute("dewarpingMode")),
 	m_despeckleLevel(despeckleLevelFromString(el.attribute("despeckleLevel")))
@@ -76,7 +77,7 @@ OutputImageParams::toXml(QDomDocument& doc, QString const& name) const
 	el.appendChild(marshaller.dpi(m_dpi, "dpi"));
 	el.appendChild(m_colorParams.toXml(doc, "color-params"));
 	el.appendChild(m_distortionModel.toXml(doc, "distortion-model"));
-	el.setAttribute("depthPerception", m_depthPerception.toString());
+        el.setAttribute("depthPerception", m_depthPerception.toString());
 	el.setAttribute("dewarpingMode", m_dewarpingMode.toString());
 	el.setAttribute("despeckleLevel", despeckleLevelToString(m_despeckleLevel));
 	
@@ -107,6 +108,12 @@ OutputImageParams::matches(OutputImageParams const& other) const
 		return false;
 	}
 
+        if(m_pictureShape==0 || m_pictureShape==1) {
+            if (m_pictureShape != other.m_pictureShape) {
+                    return false;
+            }
+        }
+	
 	if (m_dewarpingMode != other.m_dewarpingMode) {
 		return false;
 	} else if (m_dewarpingMode != DewarpingMode::OFF) {

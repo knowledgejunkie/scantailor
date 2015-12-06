@@ -29,8 +29,18 @@ public:
 	SettingsDialog(QWidget* parent = 0);
 	
 	virtual ~SettingsDialog();
+signals:
+	void updateUIThresholdSlider();
+	void startAutoSaveTimer();
+	void stopAutoSaveTimer();
+	
 private slots:
 	void commitChanges();
+	void setLighterThreshold();
+	void setDarkerThreshold();
+	void setNeutralThreshold();
+	void bwThresholdChanged();
+	void bwThresholdLevelChanged();
 private:
 	Ui::SettingsDialog ui;
 };

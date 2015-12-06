@@ -33,6 +33,7 @@
 #include "PageRange.h"
 #include "SelectedPage.h"
 #include "BeforeOrAfter.h"
+#include "SettingsDialog.h"
 #ifndef Q_MOC_RUN
 #include <boost/function.hpp>
 #endif
@@ -73,6 +74,7 @@ class OutOfMemoryDialog;
 class QLineF;
 class QRectF;
 class QLayout;
+class QTimer;
 
 class MainWindow :
 	public QMainWindow,
@@ -168,6 +170,12 @@ private slots:
 	void openSettingsDialog();
 
 	void showAboutDialog();
+	
+	void updateUIThresholdSlider();
+	
+	void startAutoSaveTimer();
+	void stopAutoSaveTimer();
+	void autoSaveProject();
 
 	void handleOutOfMemorySituation();
 private:
@@ -272,6 +280,8 @@ private:
 
 	PageSelectionAccessor newPageSelectionAccessor();
 	
+	bool copyFileTo(const QString &sFromPath, const QString &sToPath);
+	
 	QSizeF m_maxLogicalThumbSize;
 	IntrusivePtr<ProjectPages> m_ptrPages;
 	IntrusivePtr<StageSequence> m_ptrStages;
@@ -302,6 +312,12 @@ private:
 	bool m_debug;
 	bool m_closing;
 	bool m_beepOnBatchProcessingCompletion;
+	
+	SettingsDialog* m_settingsDialog;
+	QTimer* m_autosave_timer;
+	
+	QString m_inputDir;
+	QString m_outputDir;
 };
 
 #endif
