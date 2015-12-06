@@ -30,6 +30,7 @@
 #include "DespeckleLevel.h"
 #include "Dpi.h"
 #include "ImageViewTab.h"
+#include "Params.h"
 #include <set>
 
 namespace dewarping
@@ -59,7 +60,7 @@ public:
 
 	ImageViewTab lastTab() const { return m_lastTab; }
 
-	DepthPerception const& depthPerception() const { return m_depthPerception; }
+    DepthPerception const& depthPerception() const { return m_depthPerception; }
 signals:
 	void despeckleLevelChanged(DespeckleLevel level, bool* handled);
 
@@ -78,6 +79,10 @@ private slots:
 	void applyColorsConfirmed(std::set<PageId> const& pages);
 
 	void colorModeChanged(int idx);
+
+	void pictureShapeChanged(int idx);
+	
+	void tiffCompressionChanged(int idx);
 	
 	void whiteMarginsToggled(bool checked);
 	
@@ -128,6 +133,7 @@ private:
 	PageId m_pageId;
 	Dpi m_outputDpi;
 	ColorParams m_colorParams;
+	PictureShape m_pictureShape;
 	DepthPerception m_depthPerception;
 	DewarpingMode m_dewarpingMode;
 	DespeckleLevel m_despeckleLevel;

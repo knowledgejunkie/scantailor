@@ -26,6 +26,8 @@
 #include <boost/foreach.hpp>
 #endif
 
+#include <iostream>
+
 namespace select_content
 {
 
@@ -38,8 +40,18 @@ OptionsWidget::OptionsWidget(
 {
 	setupUi(this);
 	
-	connect(autoBtn, SIGNAL(toggled(bool)), this, SLOT(modeChanged(bool)));
+	connect(autoBtn, SIGNAL(pressed()), this, SLOT(autoMode()));
+	connect(manualBtn, SIGNAL(pressed()), this, SLOT(manualMode()));
+	connect(disableBtn, SIGNAL(pressed()), this, SLOT(contentDetectionDisabled()));
+	connect(pageDetectAutoBtn, SIGNAL(pressed()), this, SLOT(pageDetectionEnabled()));
+	connect(pageDetectDisableBtn, SIGNAL(pressed()), this, SLOT(pageDetectionDisabled()));
 	connect(applyToBtn, SIGNAL(clicked()), this, SLOT(showApplyToDialog()));
+	connect(fineTuneBtn, SIGNAL(toggled(bool)), this, SLOT(fineTuningChanged(bool)));
+    
+    connect(leftBorder, SIGNAL(valueChanged(double)), this, SLOT(borderChanged()));
+    connect(rightBorder, SIGNAL(valueChanged(double)), this, SLOT(borderChanged()));
+    connect(topBorder, SIGNAL(valueChanged(double)), this, SLOT(borderChanged()));
+    connect(bottomBorder, SIGNAL(valueChanged(double)), this, SLOT(borderChanged()));
 }
 
 OptionsWidget::~OptionsWidget()
@@ -55,15 +67,33 @@ OptionsWidget::preUpdateUI(PageId const& page_id)
 	autoBtn->setChecked(true);
 	autoBtn->setEnabled(false);
 	manualBtn->setEnabled(false);
+	disableBtn->setEnabled(false);
+	pageDetectAutoBtn->setEnabled(false);
+	pageDetectDisableBtn->setEnabled(false);
 }
 
 void
 OptionsWidget::postUpdateUI(UiData const& ui_data)
 {
+    Margins m = ui_data.pageBorders();
+    
 	m_uiData = ui_data;
+    
+    leftBorder->setValue(m.left());
+    topBorder->setValue(m.top());
+    rightBorder->setValue(m.right());
+    bottomBorder->setValue(m.bottom());
+    
 	updateModeIndication(ui_data.mode());
+	fineTuneBtn->setChecked(ui_data.fineTuning());
+	pageDetectAutoBtn->setChecked(ui_data.pageDetection());
+	pageDetectDisableBtn->setChecked(!ui_data.pageDetection());
 	autoBtn->setEnabled(true);
 	manualBtn->setEnabled(true);
+	disableBtn->setEnabled(true);
+	pageDetectAutoBtn->setEnabled(true);
+	pageDetectDisableBtn->setEnabled(true);
+	fineTuneBtn->setEnabled(true);
 }
 
 void
@@ -71,27 +101,98 @@ OptionsWidget::manualContentRectSet(QRectF const& content_rect)
 {
 	m_uiData.setContentRect(content_rect);
 	m_uiData.setMode(MODE_MANUAL);
+	m_uiData.setContentDetection(true);
+    m_uiData.setPageDetection(false);
 	updateModeIndication(MODE_MANUAL);
 	commitCurrentParams();
 	
 	emit invalidateThumbnail(m_pageId);
+	emit reloadRequested();
 }
 
 void
 OptionsWidget::modeChanged(bool const auto_mode)
 {
-	if (m_ignoreAutoManualToggle) {
-		return;
-	}
-	
+	//if (m_ignoreAutoManualToggle) {
+	//	return;
+	//}
+
 	if (auto_mode) {
+		//m_ptrSettings->clearPageParams(m_pageId);
 		m_uiData.setMode(MODE_AUTO);
-		m_ptrSettings->clearPageParams(m_pageId);
+		m_uiData.setContentDetection(true);
+		commitCurrentParams();
 		emit reloadRequested();
 	} else {
+        m_uiData.setPageDetection(false);
 		m_uiData.setMode(MODE_MANUAL);
+		m_uiData.setContentDetection(true);
 		commitCurrentParams();
+		emit reloadRequested();
 	}
+}
+
+void OptionsWidget::autoMode()
+{
+	modeChanged(true);
+}
+
+void OptionsWidget::manualMode()
+{
+	modeChanged(false);
+}
+
+void
+OptionsWidget::fineTuningChanged(bool checked)
+{
+	m_uiData.setFineTuneCorners(checked);
+	commitCurrentParams();
+	if (m_uiData.pageDetection()) {
+		emit reloadRequested();
+	}
+}
+
+void
+OptionsWidget::contentDetectionDisabled(void)
+{
+	bool old = m_ignoreAutoManualToggle;
+	m_ignoreAutoManualToggle = true;
+
+	m_uiData.setContentDetection(false);
+	commitCurrentParams();
+	autoBtn->setChecked(false);
+	manualBtn->setChecked(false);
+	disableBtn->setChecked(true);
+	emit reloadRequested();
+
+	m_ignoreAutoManualToggle = old;
+}
+
+void
+OptionsWidget::pageDetectionDisabled(void)
+{
+	m_uiData.setPageDetection(false);
+	pageDetectAutoBtn->setChecked(false);
+	pageDetectDisableBtn->setChecked(true);
+	commitCurrentParams();
+	emit reloadRequested();
+}
+
+void
+OptionsWidget::pageDetectionEnabled(void)
+{
+	m_uiData.setPageDetection(true);
+	pageDetectAutoBtn->setChecked(true);
+	pageDetectDisableBtn->setChecked(false);
+	commitCurrentParams();
+    emit reloadRequested();
+}
+
+void OptionsWidget::borderChanged()
+{
+    m_uiData.setPageBorders(leftBorder->value(), topBorder->value(), rightBorder->value(), bottomBorder->value());
+    commitCurrentParams();
+    emit reloadRequested();
 }
 
 void
@@ -99,20 +200,35 @@ OptionsWidget::updateModeIndication(AutoManualMode const mode)
 {
 	ScopedIncDec<int> guard(m_ignoreAutoManualToggle);
 	
-	if (mode == MODE_AUTO) {
-		autoBtn->setChecked(true);
+	if (! m_uiData.contentDetection()) {
+		disableBtn->setChecked(true);
+		autoBtn->setChecked(false);
+		manualBtn->setChecked(false);
 	} else {
-		manualBtn->setChecked(true);
+		disableBtn->setChecked(false);
+		if (mode == MODE_AUTO) {
+			autoBtn->setChecked(true);
+			manualBtn->setChecked(false);
+		} else {
+			autoBtn->setChecked(false);
+			manualBtn->setChecked(true);
+            pageDetectDisableBtn->setChecked(true);
+            pageDetectAutoBtn->setChecked(false);
+		}
 	}
 }
 
 void
 OptionsWidget::commitCurrentParams()
 {
-	Params const params(
+	Params params(
 		m_uiData.contentRect(), m_uiData.contentSizeMM(),
-		m_uiData.dependencies(), m_uiData.mode()
+		//m_uiData.dependencies(), m_uiData.mode(), m_uiData.contentDetection(), m_uiData.pageDetection(), m_uiData.fineTuning()
+		Dependencies(), m_uiData.mode(), m_uiData.contentDetection(), m_uiData.pageDetection(), m_uiData.fineTuning()
 	);
+	params.setPageRect(m_uiData.pageRect());
+    params.setPageBorders(m_uiData.pageBorders());
+	params.computeDeviation(m_ptrSettings->avg());
 	m_ptrSettings->setPageParams(m_pageId, params);
 }
 
@@ -124,34 +240,52 @@ OptionsWidget::showApplyToDialog()
 	);
 	dialog->setAttribute(Qt::WA_DeleteOnClose);
 	connect(
-		dialog, SIGNAL(applySelection(std::set<PageId> const&)),
-		this, SLOT(applySelection(std::set<PageId> const&))
+		dialog, SIGNAL(applySelection(std::set<PageId> const&, bool)),
+		this, SLOT(applySelection(std::set<PageId> const&, bool))
 	);
 	dialog->show();
 }
 
 void
-OptionsWidget::applySelection(std::set<PageId> const& pages)
+OptionsWidget::applySelection(std::set<PageId> const& pages, bool apply_content_box)
 {
 	if (pages.empty()) {
 		return;
 	}
-	
-	Params const params(
+
+	Dependencies deps;
+	Params params(
 		m_uiData.contentRect(), m_uiData.contentSizeMM(),
-		m_uiData.dependencies(), m_uiData.mode()
+		deps, m_uiData.mode(), m_uiData.contentDetection(), m_uiData.pageDetection(), m_uiData.fineTuning()
 	);
 
 	BOOST_FOREACH(PageId const& page_id, pages) {
+		std::auto_ptr<Params> old_params = m_ptrSettings->getPageParams(page_id);
+
+		if (old_params.get()) {
+			if (!apply_content_box) {
+				params.setContentRect(old_params->contentRect());
+				params.setContentSizeMM(old_params->contentSizeMM());
+			}
+			params.setPageRect(old_params->pageRect());
+		}
+		params.setPageBorders( Margins(leftBorder->value(), topBorder->value(), rightBorder->value(), bottomBorder->value()) );
+
 		m_ptrSettings->setPageParams(page_id, params);
-		emit invalidateThumbnail(page_id);
+		//emit invalidateThumbnail(page_id);
 	}
+    emit invalidateAllThumbnails();
+    emit reloadRequested();
 }
 
 /*========================= OptionsWidget::UiData ======================*/
 
 OptionsWidget::UiData::UiData()
-:	m_mode(MODE_AUTO)
+:	m_mode(MODE_AUTO),
+	m_contentDetection(true),
+	m_pageDetection(false),
+	m_fineTuneCorners(false),
+    m_borders(0,0,0,0)
 {
 }
 
@@ -175,6 +309,18 @@ QRectF const&
 OptionsWidget::UiData::contentRect() const
 {
 	return m_contentRect;
+}
+
+void
+OptionsWidget::UiData::setPageRect(QRectF const& page_rect)
+{
+	m_pageRect = page_rect;
+}
+
+QRectF const&
+OptionsWidget::UiData::pageRect() const
+{
+	return m_pageRect;
 }
 
 QSizeF
@@ -206,5 +352,32 @@ OptionsWidget::UiData::mode() const
 {
 	return m_mode;
 }
+
+void
+OptionsWidget::UiData::setContentDetection(bool detect)
+{
+	m_contentDetection = detect;
+}
+
+void
+OptionsWidget::UiData::setPageDetection(bool detect)
+{
+	m_pageDetection = detect;
+}
+
+void
+OptionsWidget::UiData::setFineTuneCorners(bool fine_tune)
+{
+    m_fineTuneCorners = fine_tune;
+}
+
+void OptionsWidget::UiData::setPageBorders(double left, double top, double right, double bottom)
+{
+    m_borders.setLeft(left);
+    m_borders.setTop(top);
+    m_borders.setRight(right);
+    m_borders.setBottom(bottom);
+}
+
 
 } // namespace select_content

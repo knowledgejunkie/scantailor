@@ -118,6 +118,14 @@ Filter::saveSettings(
 	using namespace boost::lambda;
 	
 	QDomElement filter_el(doc.createElement("select-content"));
+
+	filter_el.setAttribute("average", m_ptrSettings->avg());
+	filter_el.setAttribute("sigma", m_ptrSettings->std());
+	filter_el.setAttribute("maxDeviation", m_ptrSettings->maxDeviation());
+	filter_el.setAttribute("pageDetectionBoxWidth", m_ptrSettings->pageDetectionBox().width());
+	filter_el.setAttribute("pageDetectionBoxHeight", m_ptrSettings->pageDetectionBox().height());
+	filter_el.setAttribute("pageDetectionTolerance", m_ptrSettings->pageDetectionTolerance());
+
 	writer.enumPages(
 		bind(
 			&Filter::writePageSettings,
@@ -149,11 +157,29 @@ void
 Filter::loadSettings(ProjectReader const& reader, QDomElement const& filters_el)
 {
 	m_ptrSettings->clear();
-	
+
+    CommandLine cli = CommandLine::get();
+
 	QDomElement const filter_el(
 		filters_el.namedItem("select-content").toElement()
 	);
+
+	m_ptrSettings->setAvg(filter_el.attribute("average").toDouble());
+	m_ptrSettings->setStd(filter_el.attribute("sigma").toDouble());
+    
+    if (cli.hasContentDeviation()) {
+        m_ptrSettings->setMaxDeviation(cli.getContentDeviation());
+    } else {
+	    m_ptrSettings->setMaxDeviation(filter_el.attribute("maxDeviation", QString::number(cli.getContentDeviation())).toDouble());
+    }
 	
+	QSizeF box(0.0, 0.0);
+	box.setWidth(filter_el.attribute("pageDetectionBoxWidth", "0.0").toDouble());
+	box.setHeight(filter_el.attribute("pageDetectionBoxHeight", "0.0").toDouble());
+	m_ptrSettings->setPageDetectionBox(box);
+	
+	m_ptrSettings->setPageDetectionTolerance(filter_el.attribute("pageDetectionTolerance", "0.1").toDouble());
+
 	QString const page_tag_name("page");
 	QDomNode node(filter_el.firstChild());
 	for (; !node.isNull(); node = node.nextSibling()) {
@@ -164,7 +190,7 @@ Filter::loadSettings(ProjectReader const& reader, QDomElement const& filters_el)
 			continue;
 		}
 		QDomElement const el(node.toElement());
-		
+
 		bool ok = true;
 		int const id = el.attribute("id").toInt(&ok);
 		if (!ok) {

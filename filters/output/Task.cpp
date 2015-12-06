@@ -16,6 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "CommandLine.h"
 #include "Task.h"
 #include "Filter.h"
 #include "OptionsWidget.h"
@@ -153,7 +154,23 @@ Task::process(
 	status.throwIfCancelled();
 
 	Params params(m_ptrSettings->getParams(m_pageId));
-	RenderParams const render_params(params.colorParams());
+	CommandLine const& cli = CommandLine::get();
+
+	if (cli.hasTiffForceKeepColorSpace()) {
+		ColorParams colorParams = params.colorParams();
+		switch (data.origImage().format()) {
+			case QImage::Format_Mono:
+			case QImage::Format_MonoLSB:
+				colorParams.setColorMode(ColorParams::BLACK_AND_WHITE);
+				break;
+			default:
+				colorParams.setColorMode(ColorParams::COLOR_GRAYSCALE);
+				break;
+		}
+		params.setColorParams(colorParams);
+	}
+
+	RenderParams render_params(params.colorParams());
 	QString const out_file_path(m_outFileNameGen.filePathFor(m_pageId));
 	QFileInfo const out_file_info(out_file_path);
 
@@ -185,7 +202,7 @@ Task::process(
 		generator.outputImageSize(), generator.outputContentRect(),
 		new_xform, params.outputDpi(), params.colorParams(),
 		params.dewarpingMode(), params.distortionModel(),
-		params.depthPerception(), params.despeckleLevel() 
+		params.depthPerception(), params.despeckleLevel(), params.pictureShape()
 	);
 
 	ZoneSet const new_picture_zones(m_ptrSettings->pictureZonesForPage(m_pageId));
@@ -307,7 +324,7 @@ Task::process(
 			params.depthPerception(),
 			write_automask ? &automask_img : 0,
 			write_speckles_file ? &speckles_img : 0,
-			m_ptrDbg.get()
+			m_ptrDbg.get(), params.pictureShape()
 		);
 
 		if (params.dewarpingMode() == DewarpingMode::AUTO && distortion_model.isValid()) {
@@ -327,7 +344,7 @@ Task::process(
 
 		bool invalidate_params = false;
 		
-		if (!TiffWriter::writeImage(out_file_path, out_img)) {
+		if (!TiffWriter::writeImage(out_file_path, out_img, m_ptrSettings->getTiffCompression())) {
 			invalidate_params = true;
 		} else {
 			deleteMutuallyExclusiveOutputFiles();
@@ -342,14 +359,14 @@ Task::process(
 			// Also note that QDir::mkdir() will fail if the directory already exists,
 			// so we ignore its return value here.
 
-			if (!TiffWriter::writeImage(automask_file_path, automask_img.toQImage())) {
+			if (!TiffWriter::writeImage(automask_file_path, automask_img.toQImage(), m_ptrSettings->getTiffCompression())) {
 				invalidate_params = true;
 			}
 		}
 		if (write_speckles_file) {
 			if (!QDir().mkpath(speckles_dir)) {
 				invalidate_params = true;
-			} else if (!TiffWriter::writeImage(speckles_file_path, speckles_img.toQImage())) {
+			} else if (!TiffWriter::writeImage(speckles_file_path, speckles_img.toQImage(), m_ptrSettings->getTiffCompression())) {
 				invalidate_params = true;
 			}
 		}

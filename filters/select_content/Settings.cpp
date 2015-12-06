@@ -25,11 +25,20 @@
 #include <boost/foreach.hpp>
 #endif
 
+#include <cmath>
+#include <iostream>
+#include "CommandLine.h" 
+
 namespace select_content
 {
 
-Settings::Settings()
+Settings::Settings() :
+    m_avg(0.0),
+    m_sigma(0.0),
+    m_pageDetectionBox(0.0, 0.0),
+    m_pageDetectionTolerance(0.1)
 {
+    m_maxDeviation = CommandLine::get().getContentDeviation();
 }
 
 Settings::~Settings()
@@ -56,7 +65,32 @@ Settings::performRelinking(AbstractRelinker const& relinker)
 		new_params.insert(PageParams::value_type(new_page_id, kv.second));
 	}
 
-	m_pageParams.swap(new_params);
+    m_pageParams.swap(new_params);
+}
+
+void Settings::updateDeviation()
+{
+    m_avg = 0.0;
+    BOOST_FOREACH(PageParams::value_type & kv, m_pageParams) {
+		kv.second.computeDeviation(0.0);
+		m_avg += -1 * kv.second.deviation();
+    }
+    m_avg = m_avg / double(m_pageParams.size());
+#ifdef DEBUG
+    std::cout << "avg_content = " << m_avg << std::endl;
+#endif
+
+    double sigma2 = 0.0;
+    BOOST_FOREACH(PageParams::value_type & kv, m_pageParams) {
+        kv.second.computeDeviation(m_avg);
+        sigma2 += kv.second.deviation() * kv.second.deviation();
+    }
+    sigma2 = sigma2 / double(m_pageParams.size());
+    m_sigma = sqrt(sigma2);
+#if DEBUG
+    std::cout << "sigma2 = " << sigma2 << std::endl;
+    std::cout << "sigma = " << m_sigma << std::endl;
+#endif
 }
 
 void

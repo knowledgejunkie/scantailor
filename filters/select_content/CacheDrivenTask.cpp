@@ -28,6 +28,8 @@
 #include "filter_dc/ContentBoxCollector.h"
 #include "filters/page_layout/CacheDrivenTask.h"
 
+#include <iostream>
+
 namespace select_content
 {
 
@@ -50,7 +52,7 @@ CacheDrivenTask::process(
 {
 	std::auto_ptr<Params> params(m_ptrSettings->getPageParams(page_info.id()));
 	Dependencies const deps(xform.resultingPreCropArea());
-	if (!params.get() || !params->dependencies().matches(deps)) {
+	if (!params.get() || (!params->dependencies().matches(deps) && (params->mode() == MODE_AUTO || !params->isContentDetectionEnabled()))) {
 		
 		if (ThumbnailCollector* thumb_col = dynamic_cast<ThumbnailCollector*>(collector)) {
 			thumb_col->processThumbnail(
@@ -83,7 +85,8 @@ CacheDrivenTask::process(
 					thumb_col->thumbnailCache(),
 					thumb_col->maxLogicalThumbSize(),
 					page_info.imageId(), xform,
-					params->contentRect()
+					params->contentRect(),
+					params->isDeviant(m_ptrSettings->std(), m_ptrSettings->maxDeviation())
 				)
 			)
 		);

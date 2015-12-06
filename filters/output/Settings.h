@@ -24,6 +24,7 @@
 #include "PageId.h"
 #include "Dpi.h"
 #include "ColorParams.h"
+#include "Params.h"
 #include "OutputParams.h"
 #include "DewarpingMode.h"
 #include "dewarping/DistortionModel.h"
@@ -59,6 +60,8 @@ public:
 
 	void setColorParams(PageId const& page_id, ColorParams const& prms);
 
+	void setPictureShape(PageId const& page_id, PictureShape picture_shape);
+
 	void setDpi(PageId const& page_id, Dpi const& dpi);
 
 	void setDewarpingMode(PageId const& page_id, DewarpingMode const& mode);
@@ -82,6 +85,9 @@ public:
 	void setPictureZones(PageId const& page_id, ZoneSet const& zones);
 
 	void setFillZones(PageId const& page_id, ZoneSet const& zones);
+	
+	int getTiffCompression() { return m_compression; };
+	void setTiffCompression(int compression) { m_compression = compression; };
 
 	/**
 	 * For now, default zone properties are not persistent.
@@ -110,6 +116,7 @@ private:
 	PerPageZones m_perPageFillZones;
 	PropertySet m_defaultPictureZoneProps;
 	PropertySet m_defaultFillZoneProps;
+	int m_compression;
 };
 
 } // namespace output

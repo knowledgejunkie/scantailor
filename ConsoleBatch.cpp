@@ -68,6 +68,7 @@
 #include "filters/output/CacheDrivenTask.h"
 
 #include <QMap>
+#include <QImage>
 #include <QDomDocument>
 
 #include "ConsoleBatch.h"
@@ -191,6 +192,7 @@ ConsoleBatch::process()
 {
 	CommandLine const& cli = CommandLine::get();
 
+	// get first filter id
 	int startFilterIdx = m_ptrStages->fixOrientationFilterIdx();
 	if (cli.hasStartFilterIdx()) {
 		unsigned int sf = cli.getStartFilterIdx();
@@ -199,6 +201,7 @@ ConsoleBatch::process()
 		startFilterIdx = sf;
 	}
 
+	// get last filter id
 	int endFilterIdx = m_ptrStages->outputFilterIdx();
 	if (cli.hasEndFilterIdx()) {
 		unsigned int ef = cli.getEndFilterIdx();
@@ -206,13 +209,15 @@ ConsoleBatch::process()
 			throw std::runtime_error("End filter out of range");
 		endFilterIdx = ef;
 	}
-
+    
+	// run filters
 	for (int j=startFilterIdx; j<=endFilterIdx; j++) {
 		if (cli.isVerbose())
 			std::cout << "Filter: " << (j+1) << "\n";
 
+		// process pages
 		PageSequence page_sequence = m_ptrPages->toPageSequence(PAGE_VIEW);
-		setupFilter(j, page_sequence.selectAll());
+ 		setupFilter(j, page_sequence.selectAll());
 		for (unsigned i=0; i<page_sequence.numPages(); i++) {
 			PageInfo page = page_sequence.pageAt(i);
 			if (cli.isVerbose())
@@ -221,7 +226,19 @@ ConsoleBatch::process()
 			(*bgTask)();
 		}
 	}
+    
+	// setup rest filters with params from cli
+	for (int j=endFilterIdx+1; j<= m_ptrStages->count(); j++) {
+		PageSequence page_sequence = m_ptrPages->toPageSequence(PAGE_VIEW);
+		setupFilter(j, page_sequence.selectAll());
+	}
+    
+	// update statistics for executed filters
+	for (int j=0; j<=endFilterIdx; j++) {
+		m_ptrStages->filterAt(j)->updateStatistics();
+	}
 }
+
 
 void
 ConsoleBatch::saveProject(QString const project_file)
@@ -316,6 +333,10 @@ ConsoleBatch::setupDeskew(std::set<PageId> allPages)
 			deskew->getSettings()->setPageParams(page, params);
 		}
 	}
+
+	if (cli.hasSkewDeviation()) {
+		deskew->getSettings()->setMaxDeviation(cli.getSkewDeviation());
+	}
 }
 
 
@@ -327,16 +348,40 @@ ConsoleBatch::setupSelectContent(std::set<PageId> allPages)
 
 	for (std::set<PageId>::iterator i=allPages.begin(); i!=allPages.end(); i++) {
 		PageId page = *i;
+		select_content::Dependencies deps;
+
+		select_content::Params params(deps);
+		std::auto_ptr<select_content::Params> old_params = select_content->getSettings()->getPageParams(page);
+
+		if (old_params.get()) {
+			params = *old_params;
+		}
 
 		// SELECT CONTENT FILTER
 		if (cli.hasContentRect()) {
-			QRectF rect(cli.getContentRect());
-			QSizeF size_mm(rect.width(), rect.height());
-			select_content::Dependencies deps;
-			select_content::Params params(rect, size_mm, deps, MODE_MANUAL);
-			select_content->getSettings()->setPageParams(page, params);
+			params.setContentRect(cli.getContentRect());
+			//QRectF rect(cli.getContentRect());
+			//QSizeF size_mm(rect.width(), rect.height());
+			//select_content::Params params(rect, size_mm, deps, MODE_MANUAL);
 		}
+
+		params.setContentDetect(cli.isContentDetectionEnabled());
+		params.setPageDetect(cli.isPageDetectionEnabled());
+		params.setFineTuneCorners(cli.isFineTuningEnabled());
+        if (cli.hasPageBorders())
+			params.setPageBorders(cli.getPageBorders());
+
+		select_content->getSettings()->setPageParams(page, params);
 	}
+
+	if (cli.hasContentDeviation())
+		select_content->getSettings()->setMaxDeviation(cli.getContentDeviation());
+
+	if (cli.hasPageDetectionBox())
+		select_content->getSettings()->setPageDetectionBox(cli.getPageDetectionBox());
+
+	if (cli.hasPageDetectionTolerance())
+		select_content->getSettings()->setPageDetectionTolerance(cli.getPageDetectionTolerance());
 }
 
 
@@ -345,12 +390,43 @@ ConsoleBatch::setupPageLayout(std::set<PageId> allPages)
 {
 	IntrusivePtr<page_layout::Filter> page_layout = m_ptrStages->pageLayoutFilter(); 
 	CommandLine const& cli = CommandLine::get();
+	QMap<QString, float> img_cache;
 
 	for (std::set<PageId>::iterator i=allPages.begin(); i!=allPages.end(); i++) {
 		PageId page = *i;
 
 		// PAGE LAYOUT FILTER
 		page_layout::Alignment alignment = cli.getAlignment();
+		if (cli.hasMatchLayoutTolerance()) {
+			QString const path = page.imageId().filePath();
+			if (!img_cache.contains(path)) {
+				QImage img(path);
+				img_cache[path] = float(img.width()) / float(img.height());
+			}
+			float imgAspectRatio = img_cache[path];
+			float tolerance = cli.getMatchLayoutTolerance();
+			std::vector<float> diffs;
+			for (std::set<PageId>::iterator pi=allPages.begin(); pi!=allPages.end(); pi++) {
+				ImageId pimageId = pi->imageId();
+				QString ppath = pimageId.filePath();
+				if (!img_cache.contains(ppath)) {
+					QImage img(ppath);
+					img_cache[ppath] = float(img.width()) / float(img.height());
+				}
+				float pimgAspectRatio = img_cache[ppath];
+				float diff = imgAspectRatio - pimgAspectRatio;
+				if (diff < 0.0) diff *= -1;
+				diffs.push_back(diff);
+			}
+			unsigned bad_diffs = 0;
+			for (unsigned j=0; j<diffs.size(); j++) {
+				if (diffs[j] > tolerance)
+					bad_diffs += 1;
+			}
+			if (bad_diffs > (diffs.size()/2)) {
+				alignment.setNull(true);
+			}
+		}
 		if (cli.hasMargins())
 			page_layout->getSettings()->setHardMarginsMM(page, cli.getMargins());
 		if (cli.hasAlignment())
@@ -375,6 +451,10 @@ ConsoleBatch::setupOutput(std::set<PageId> allPages)
 			params.setOutputDpi(outputDpi);
 		}
 
+		if (cli.hasPictureShape()) {
+			params.setPictureShape(cli.getPictureShape());
+		}
+
 		output::ColorParams colorParams = params.colorParams();
 		if (cli.hasColorMode())
 			colorParams.setColorMode(cli.getColorMode());
@@ -393,17 +473,21 @@ ConsoleBatch::setupOutput(std::set<PageId> allPages)
 			bwo.setThresholdAdjustment(cli.getThreshold());
 			colorParams.setBlackWhiteOptions(bwo);
 		}
-
+        
 		params.setColorParams(colorParams);
 
 		if (cli.hasDespeckle())
 			params.setDespeckleLevel(cli.getDespeckleLevel());
 
-		if (cli.hasDewarping())
+		if (cli.hasDewarping()) {
 			params.setDewarpingMode(cli.getDewarpingMode());
+		}
 		if (cli.hasDepthPerception())
 			params.setDepthPerception(cli.getDepthPerception());
 
 		output->getSettings()->setParams(page, params);
 	}
+	
+	if (cli.hasTiffCompression())
+		output->getSettings()->setTiffCompression(cli.getTiffCompression());
 }

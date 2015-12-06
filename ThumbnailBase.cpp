@@ -225,6 +225,26 @@ ThumbnailBase::paint(QPainter* painter,
 	painter->drawPixmap(display_rect.topLeft(), temp_pixmap);
 }
 
+void ThumbnailBase::paintDeviant(QPainter &painter)
+{
+	QPen pen(QColor(0xdd, 0x00, 0x00, 0xee));
+	pen.setWidth(5);
+	pen.setCosmetic(true);
+	painter.setPen(pen);
+
+	painter.setBrush(QColor(0xdd, 0x00, 0x00, 0xee));
+    
+    QFont font("Serif");
+    font.setWeight(QFont::Bold);
+    font.setPixelSize(boundingRect().width() / 2);
+    painter.setFont(font);
+
+    //painter.drawLine(boundingRect().left(), boundingRect().top(), boundingRect().right(), boundingRect().bottom());
+    //painter.drawLine(boundingRect().left(), boundingRect().bottom(), boundingRect().right(), boundingRect().top());
+    painter.drawText(boundingRect(), Qt::AlignCenter, "*");
+	//painter.drawRect(boundingRect());
+}
+
 void
 ThumbnailBase::setImageXform(ImageTransformation const& image_xform)
 {

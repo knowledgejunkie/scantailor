@@ -90,8 +90,9 @@ public:
 
 	std::set<PageId> selectedPages() const;
 	
-	std::vector<PageRange> selectedRanges() const;
+    std::vector<PageRange> selectedRanges() const;
 protected:
+    bool eventFilter(QObject *obj, QEvent *ev);
 	virtual void closeEvent(QCloseEvent* event);
 	
 	virtual void timerEvent(QTimerEvent* event);
@@ -124,6 +125,12 @@ private slots:
 	void thumbViewScrolled();
 
 	void filterSelectionChanged(QItemSelection const& selected);
+	void switchFilter1();
+	void switchFilter2();
+	void switchFilter3();
+	void switchFilter4();
+	void switchFilter5();
+	void switchFilter6();
 
 	void pageOrderingChanged(int idx);
 	
