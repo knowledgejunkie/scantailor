@@ -129,10 +129,6 @@ ZoneVertexDragInteraction::onMouseMoveEvent(QMouseEvent* event, InteractionState
 	QTransform const from_screen(m_rContext.imageView().widgetToImage());
 	m_ptrVertex->setPoint(from_screen.map(event->pos() + QPointF(0.5, 0.5) + m_dragOffset));
 
-//begin of modified by monday2000
-//Ortho_Corner_Move_Square_Picture_Zones
-//added:
-
 	Qt::KeyboardModifiers mask = event->modifiers();
 
 	if (mask == Qt::ControlModifier) 
@@ -160,7 +156,6 @@ ZoneVertexDragInteraction::onMouseMoveEvent(QMouseEvent* event, InteractionState
 		m_ptrVertex->prev(SplineVertex::LOOP)->setPoint(from_screen.map(prev));
 		m_ptrVertex->next(SplineVertex::LOOP)->setPoint(from_screen.map(next));
 	}
-//end of modified by monday2000
 
 	checkProximity(interaction);
 	m_rContext.imageView().update();

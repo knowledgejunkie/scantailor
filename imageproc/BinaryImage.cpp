@@ -30,10 +30,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-//begin of modified by monday2000
-//Picture_Shape
 #include <boost/foreach.hpp>
-//end of modified by monday2000
 
 namespace imageproc
 {
@@ -562,8 +559,6 @@ BinaryImage::contentBoundingBox(BWColor const content_color) const
 	return QRect(left, top, w - right - left, bottom - top + 1);
 }
 
-//begin of modified by monday2000
-//Picture_Shape
 void
 BinaryImage::rectangularizeAreas(BWColor content_color)
 {
@@ -841,8 +836,6 @@ BinaryImage::getPixel(int x, int y)
 
         return (BWColor)((line[x >> 5] >> (31 - (x & 31))) & 1);
 }
-
-//end of modified by monday2000
 
 uint32_t*
 BinaryImage::data()

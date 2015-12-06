@@ -69,11 +69,7 @@
 #include <algorithm>
 #include <stddef.h>
 #include <assert.h>
-//begin of modified by monday2000
-//Export_Subscans
-//added:
 #include <QMessageBox>
-//end of modified by monday2000
 
 using namespace ::boost::multi_index;
 using namespace ::boost::lambda;
@@ -176,11 +172,7 @@ public:
 		PageInfo const& page_info, QPoint const& screen_pos, bool selected);
 		
 	void itemSelectedByUser(CompositeItem* item, Qt::KeyboardModifiers modifiers);
-//begin of modified by monday2000
-//Export_Subscans
-//added:
 	bool AllThumbnailsComplete();
-//end of modified by monday2000
 private:
 	class ItemsByIdTag;
 	class ItemsInOrderTag;
@@ -757,9 +749,6 @@ ThumbnailSequence::Impl::invalidateAllThumbnails()
 	commitSceneRect();
 }
 
-//begin of modified by monday2000
-//Export_Subscans
-//added:
 bool
 ThumbnailSequence::Impl::AllThumbnailsComplete()
 {
@@ -791,7 +780,6 @@ ThumbnailSequence::AllThumbnailsComplete()
 {
 	return m_ptrImpl->AllThumbnailsComplete();
 }
-// end of modified by monday2000
 
 bool
 ThumbnailSequence::Impl::setSelection(PageId const& page_id)

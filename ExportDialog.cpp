@@ -15,9 +15,6 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-//begin of modified by monday2000
-//Export_Subscans
-// This file was added by monday2000
 
 #include "ExportDialog.h"
 #include "ExportDialog.h.moc"
@@ -226,15 +223,6 @@ ExportDialog::setStartExport(void)
 
 	QTimer::singleShot(1, this, SLOT(startExport()));
 }
-
-
-//void
-//ExportDialog::tabChanged(int const tab)
-//{
-//
-//}
-//end of modified by monday2000
-
 
 void
 ExportDialog::OnCheckGenerateBlankBackSubscans(bool state)

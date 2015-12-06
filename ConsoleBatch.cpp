@@ -375,13 +375,9 @@ ConsoleBatch::setupOutput(std::set<PageId> allPages)
 			params.setOutputDpi(outputDpi);
 		}
 
-//begin of modified by monday2000
-//Picture_Shape
-
 		if (cli.hasPictureShape()) {
 			params.setPictureShape(cli.getPictureShape());
 		}
-//end of modified by monday2000
 
 		output::ColorParams colorParams = params.colorParams();
 		if (cli.hasColorMode())

@@ -133,8 +133,6 @@ Settings::setColorParams(PageId const& page_id, ColorParams const& prms)
 	}
 }
 
-//begin of modified by monday2000
-//Picture_Shape
 void
 Settings::setPictureShape(PageId const& page_id, PictureShape picture_shape)
 {
@@ -149,7 +147,6 @@ Settings::setPictureShape(PageId const& page_id, PictureShape picture_shape)
 		it->second.setPictureShape(picture_shape);
 	}
 }
-//end of modified by monday2000
 
 void
 Settings::setDpi(PageId const& page_id, Dpi const& dpi)
